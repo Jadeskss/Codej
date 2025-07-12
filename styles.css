@@ -209,6 +209,7 @@ body {
     display: flex;
     gap: 1rem;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .sync-status {
@@ -254,16 +255,26 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    min-width: 120px;
+    justify-content: center;
 }
 
 .add-btn {
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
 }
 
 .add-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+.add-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
 }
 
 .logout-btn {
@@ -275,34 +286,98 @@ body {
 .logout-btn:hover {
     background: #ef4444;
     color: white;
+    border-color: #ef4444;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 12px rgba(239, 68, 68, 0.3);
+}
+
+.logout-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(239, 68, 68, 0.2);
+}
+
+/* Action buttons container for better organization */
+.action-buttons-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.primary-buttons {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
 }
 
 /* Sync Buttons */
 .sync-buttons {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.5rem;
-    margin-right: 1rem;
+    min-width: 240px;
 }
 
 .sync-btn {
-    padding: 0.5rem 1rem;
+    padding: 0.6rem 1rem;
     border: 1px solid #e2e8f0;
     background: white;
     color: #64748b;
-    border-radius: 6px;
-    font-size: 0.9rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
+    min-width: 110px;
+    white-space: nowrap;
+    text-align: center;
 }
 
 .sync-btn:hover {
     background: #f1f5f9;
     color: #667eea;
     border-color: #667eea;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.sync-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(102, 126, 234, 0.1);
+}
+
+.sync-btn i {
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+/* Cloud sync buttons with different colors */
+.sync-btn[onclick*="syncToCloud"] {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border-color: #10b981;
+}
+
+.sync-btn[onclick*="syncToCloud"]:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.sync-btn[onclick*="loadFromSupabase"] {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    border-color: #3b82f6;
+}
+
+.sync-btn[onclick*="loadFromSupabase"]:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 /* Main Content */
@@ -785,6 +860,61 @@ body {
 }
 
 /* Responsive Design */
+@media (max-width: 1200px) {
+    .app-header {
+        padding: 1rem 1.5rem;
+    }
+    
+    .main-content {
+        padding: 1.5rem;
+    }
+    
+    .programs-grid {
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .sync-buttons {
+        min-width: 220px;
+    }
+    
+    .sync-btn {
+        min-width: 100px;
+        font-size: 0.8rem;
+        padding: 0.5rem 0.8rem;
+    }
+}
+
+@media (max-width: 1024px) {
+    .app-header {
+        padding: 1rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .header-left {
+        flex: 1;
+    }
+    
+    .header-right {
+        flex: 1;
+        justify-content: flex-end;
+    }
+    
+    .main-content {
+        padding: 1.5rem;
+    }
+    
+    .programs-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+    }
+    
+    .sync-buttons {
+        min-width: 200px;
+    }
+}
+
 @media (max-width: 768px) {
     .login-card {
         margin: 1rem;
@@ -798,9 +928,60 @@ body {
         text-align: center;
     }
     
+    .header-left {
+        flex: none;
+    }
+    
     .header-right {
         width: 100%;
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .sync-status {
+        align-self: center;
+        order: -1;
+        margin-bottom: 0.5rem;
+    }
+    
+    .action-buttons-container {
+        flex-direction: column;
+        width: 100%;
+        gap: 1rem;
+        order: 1;
+    }
+    
+    .sync-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        width: 100%;
+        min-width: auto;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+    
+    .primary-buttons {
+        flex-direction: column;
+        gap: 0.75rem;
+        width: 100%;
+        max-width: 300px;
+        margin: 0 auto;
+    }
+    
+    .sync-btn {
+        font-size: 0.85rem;
+        padding: 0.7rem 1rem;
         justify-content: center;
+        min-width: auto;
+        flex: 1;
+    }
+    
+    .add-btn, .logout-btn {
+        min-width: 140px;
+        max-width: 200px;
+        margin: 0 auto;
     }
     
     .main-content {
@@ -809,6 +990,7 @@ body {
     
     .programs-grid {
         grid-template-columns: 1fr;
+        gap: 1rem;
     }
     
     .form-row {
@@ -818,6 +1000,7 @@ body {
     .modal-content {
         width: 95%;
         margin: 1rem;
+        max-height: 90vh;
     }
     
     .modal-header {
@@ -828,6 +1011,7 @@ body {
     
     .form-actions {
         flex-direction: column;
+        gap: 0.75rem;
     }
     
     .program-info {
@@ -835,30 +1019,78 @@ body {
         gap: 0.5rem;
     }
     
-    .sync-buttons {
+    .filter-buttons {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, 1fr);
         gap: 0.5rem;
-        width: 100%;
-        margin-right: 0;
-        margin-bottom: 1rem;
     }
     
-    .sync-btn {
+    .filter-btn {
         font-size: 0.8rem;
         padding: 0.5rem;
+        text-align: center;
     }
 }
 
 @media (max-width: 480px) {
-    .filter-buttons {
+    .login-card {
+        margin: 0.5rem;
+        padding: 1.5rem;
+    }
+    
+    .logo h1 {
+        font-size: 2rem;
+    }
+    
+    .header-left .logo h1 {
+        font-size: 1.5rem;
+    }
+    
+    .app-header {
+        padding: 0.75rem;
+        gap: 0.75rem;
+    }
+    
+    .action-buttons-container {
+        gap: 0.75rem;
+    }
+    
+    .sync-buttons {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        max-width: 280px;
+    }
+    
+    .primary-buttons {
+        gap: 0.5rem;
+        max-width: 280px;
+    }
+    
+    .sync-btn {
         justify-content: center;
+        padding: 0.7rem;
+        font-size: 0.8rem;
+        min-height: 44px; /* Better touch target */
+    }
+    
+    .add-btn, .logout-btn {
+        padding: 0.7rem 1rem;
+        font-size: 0.9rem;
+        min-width: 160px;
+        min-height: 44px; /* Better touch target */
+    }
+    
+    .filter-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
     }
     
     .filter-btn {
-        flex: 1;
+        font-size: 0.75rem;
+        padding: 0.5rem;
         text-align: center;
-        min-width: 80px;
+        min-height: 40px; /* Better touch target */
     }
     
     .program-card {
@@ -868,18 +1100,349 @@ body {
     .program-header {
         flex-direction: column;
         gap: 0.5rem;
+        align-items: flex-start;
+    }
+    
+    .program-language {
+        align-self: flex-end;
     }
     
     .program-actions {
         justify-content: center;
-    }
-    
-    .sync-buttons {
-        grid-template-columns: 1fr;
+        width: 100%;
+        margin-top: 0.5rem;
+        flex-wrap: wrap;
         gap: 0.5rem;
     }
     
+    .program-actions .btn {
+        min-height: 40px; /* Better touch target */
+        font-size: 0.8rem;
+    }
+    
+    .search-container input {
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 1rem 1rem 1rem 3rem;
+        min-height: 48px; /* Better touch target */
+    }
+    
+    .modal-content {
+        width: 98%;
+        margin: 0.5rem;
+        max-height: 95vh;
+    }
+    
+    .modal-header {
+        padding: 1rem;
+    }
+    
+    .modal-header h2 {
+        font-size: 1.2rem;
+    }
+    
+    .code-form {
+        padding: 1rem;
+    }
+    
+    .view-content {
+        padding: 1rem;
+    }
+    
+    .empty-state {
+        padding: 2rem 1rem;
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+    }
+    
+    .empty-state h3 {
+        font-size: 1.2rem;
+    }
+    
+    /* Better button spacing in forms */
+    .form-actions .btn {
+        min-height: 44px;
+        padding: 0.75rem 1.5rem;
+    }
+}
+
+/* Extra small devices (phones in landscape and very small screens) */
+@media (max-width: 360px) {
+    .login-card {
+        margin: 0.25rem;
+        padding: 1rem;
+    }
+    
+    .app-header {
+        padding: 0.5rem;
+        gap: 0.5rem;
+    }
+    
+    .main-content {
+        padding: 0.75rem;
+    }
+    
+    .action-buttons-container {
+        gap: 0.5rem;
+    }
+    
+    .sync-buttons {
+        max-width: 240px;
+        gap: 0.4rem;
+    }
+    
+    .primary-buttons {
+        gap: 0.4rem;
+        max-width: 240px;
+    }
+    
     .sync-btn {
-        justify-content: center;
+        font-size: 0.75rem;
+        padding: 0.6rem 0.5rem;
+        min-height: 42px;
+    }
+    
+    .add-btn, .logout-btn {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.8rem;
+        min-width: 140px;
+        min-height: 42px;
+    }
+    
+    .program-card {
+        padding: 0.75rem;
+    }
+    
+    .filter-btn {
+        padding: 0.4rem;
+        font-size: 0.7rem;
+        min-height: 36px;
+    }
+    
+    .modal-content {
+        margin: 0.25rem;
+        width: calc(100% - 0.5rem);
+    }
+    
+    .header-left .logo h1 {
+        font-size: 1.3rem;
+    }
+    
+    .header-left .tagline {
+        font-size: 0.7rem;
+    }
+    
+    /* Ensure buttons don't get too cramped */
+    .program-actions {
+        gap: 0.4rem;
+    }
+    
+    .program-actions .btn {
+        min-height: 36px;
+        font-size: 0.75rem;
+        padding: 0.5rem 0.8rem;
+    }
+}
+
+/* Hamburger Menu */
+.hamburger-menu {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+    padding: 0.5rem;
+    gap: 0.25rem;
+    z-index: 101;
+}
+
+.hamburger-menu span {
+    width: 25px;
+    height: 3px;
+    background: #667eea;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+    transform-origin: center;
+}
+
+.hamburger-menu.active span:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+}
+
+.hamburger-menu.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger-menu.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+}
+
+/* Desktop Improvements */
+@media (min-width: 769px) {
+    .header-right {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+    }
+    
+    .action-buttons-container {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+    }
+    
+    .sync-buttons {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.75rem;
+        min-width: 400px;
+    }
+    
+    .sync-btn {
+        padding: 0.7rem 1rem;
+        min-width: 90px;
+        font-size: 0.85rem;
+    }
+    
+    .sync-btn span {
+        display: inline;
+    }
+    
+    .primary-buttons {
+        gap: 1rem;
+    }
+    
+    .add-btn, .logout-btn {
+        padding: 0.8rem 1.5rem;
+        font-size: 0.95rem;
+    }
+    
+    .add-btn span, .logout-btn span {
+        display: inline;
+    }
+}
+
+/* Mobile Hamburger Menu Overrides */
+@media (max-width: 768px) {
+    /* Override the existing mobile styles for hamburger menu */
+    .app-header {
+        padding: 1rem !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        text-align: left !important;
+        gap: 0 !important;
+        position: relative !important;
+    }
+    
+    .hamburger-menu {
+        display: flex !important;
+        position: absolute !important;
+        right: 1rem !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+    }
+    
+    .header-right {
+        position: fixed !important;
+        top: 0 !important;
+        right: -100% !important;
+        width: 280px !important;
+        height: 100vh !important;
+        background: white !important;
+        box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1) !important;
+        flex-direction: column !important;
+        gap: 2rem !important;
+        padding: 6rem 2rem 2rem !important;
+        transition: right 0.3s ease !important;
+        z-index: 100 !important;
+        overflow-y: auto !important;
+        align-items: stretch !important;
+    }
+    
+    .header-right.active {
+        right: 0 !important;
+    }
+    
+    .action-buttons-container {
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 2rem !important;
+        order: unset !important;
+    }
+    
+    .sync-buttons {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+        width: 100% !important;
+        min-width: auto !important;
+        max-width: none !important;
+        margin: 0 !important;
+    }
+    
+    .primary-buttons {
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+    }
+    
+    .sync-btn {
+        font-size: 0.9rem !important;
+        padding: 1rem !important;
+        justify-content: flex-start !important;
+        text-align: left !important;
+        gap: 1rem !important;
+        border-radius: 12px !important;
+        min-width: auto !important;
+    }
+    
+    .sync-btn i {
+        font-size: 1.1rem !important;
+        width: 20px !important;
+        flex-shrink: 0 !important;
+    }
+    
+    .add-btn, .logout-btn {
+        padding: 1rem !important;
+        font-size: 0.95rem !important;
+        justify-content: flex-start !important;
+        gap: 1rem !important;
+        border-radius: 12px !important;
+        min-width: auto !important;
+        max-width: none !important;
+        margin: 0 !important;
+    }
+    
+    .add-btn i, .logout-btn i {
+        font-size: 1.1rem !important;
+        width: 20px !important;
+        flex-shrink: 0 !important;
+    }
+    
+    .sync-status {
+        align-self: center !important;
+        order: -1 !important;
+        margin-bottom: 1rem !important;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)) !important;
+        border: 1px solid rgba(102, 126, 234, 0.2) !important;
+        color: #667eea !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Mobile overlay */
+    .mobile-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99;
+    }
+    
+    .mobile-overlay.active {
+        display: block;
     }
 }

@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
         checkAuthentication();
         loadPrograms();
         setupEventListeners();
+        initializeHamburgerMenu(); // Initialize hamburger menu
         
         appInitialized = true;
         console.log('✅ Core app initialized successfully');
@@ -266,6 +267,9 @@ function setupEventListeners() {
             }
         }
     });
+    
+    // Initialize hamburger menu
+    initializeHamburgerMenu();
 }
 
 // Login Handler
@@ -765,6 +769,71 @@ function testSyncAvailability() {
     }
     
     return true;
+}
+
+// Hamburger Menu Functionality
+function initializeHamburgerMenu() {
+    const hamburgerMenu = document.getElementById('hamburgerMenu');
+    const headerRight = document.getElementById('headerRight');
+    const mobileOverlay = document.getElementById('mobileOverlay');
+    
+    if (!hamburgerMenu || !headerRight || !mobileOverlay) {
+        console.log('Hamburger menu elements not found, skipping initialization');
+        return;
+    }
+    
+    // Toggle menu
+    function toggleMenu() {
+        const isActive = headerRight.classList.contains('active');
+        
+        if (isActive) {
+            closeMenu();
+        } else {
+            openMenu();
+        }
+    }
+    
+    // Open menu
+    function openMenu() {
+        hamburgerMenu.classList.add('active');
+        headerRight.classList.add('active');
+        mobileOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden'; // Prevent background scroll
+    }
+    
+    // Close menu
+    function closeMenu() {
+        hamburgerMenu.classList.remove('active');
+        headerRight.classList.remove('active');
+        mobileOverlay.classList.remove('active');
+        document.body.style.overflow = ''; // Restore scroll
+    }
+    
+    // Event listeners
+    hamburgerMenu.addEventListener('click', toggleMenu);
+    mobileOverlay.addEventListener('click', closeMenu);
+    
+    // Close menu when clicking on a menu item
+    const menuItems = headerRight.querySelectorAll('button');
+    menuItems.forEach(item => {
+        item.addEventListener('click', closeMenu);
+    });
+    
+    // Close menu on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeMenu();
+        }
+    });
+    
+    // Close menu on window resize to desktop
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+            closeMenu();
+        }
+    });
+    
+    console.log('✅ Hamburger menu initialized');
 }
 
 // Utility Functions

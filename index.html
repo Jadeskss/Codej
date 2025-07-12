@@ -49,6 +49,9 @@
 
     <!-- Main App -->
     <div id="mainApp" class="main-app hidden">
+        <!-- Mobile Overlay -->
+        <div class="mobile-overlay" id="mobileOverlay"></div>
+        
         <!-- Header -->
         <header class="app-header">
             <div class="header-left">
@@ -59,37 +62,50 @@
                 <p class="tagline">Code ni Jade</p>
             </div>
             
-            <div class="header-right">
+            <!-- Mobile Hamburger Menu -->
+            <div class="hamburger-menu" id="hamburgerMenu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            
+            <div class="header-right" id="headerRight">
                 <div class="sync-status" id="syncStatus" style="display: none;">
                     <i class="fas fa-wifi"></i>
                     <span>Real-time sync active</span>
                 </div>
-                <div class="sync-buttons">
-                    <button id="importBtn" class="sync-btn" onclick="importData()" title="Import Data">
-                        <i class="fas fa-file-import"></i>
-                        Import
-                    </button>
-                    <button id="exportBtn" class="sync-btn" onclick="exportData()" title="Export Data">
-                        <i class="fas fa-file-export"></i>
-                        Export
-                    </button>
-                    <button id="cloudUploadBtn" class="sync-btn" onclick="syncToCloud()" title="Upload to Cloud">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        Upload
-                    </button>
-                    <button id="cloudDownloadBtn" class="sync-btn" onclick="loadFromSupabase()" title="Download from Cloud">
-                        <i class="fas fa-cloud-download-alt"></i>
-                        Download
-                    </button>
+                
+                <div class="action-buttons-container">
+                    <div class="sync-buttons">
+                        <button id="importBtn" class="sync-btn" onclick="importData()" title="Import Data">
+                            <i class="fas fa-file-import"></i>
+                            <span>Import</span>
+                        </button>
+                        <button id="exportBtn" class="sync-btn" onclick="exportData()" title="Export Data">
+                            <i class="fas fa-file-export"></i>
+                            <span>Export</span>
+                        </button>
+                        <button id="cloudUploadBtn" class="sync-btn" onclick="syncToCloud()" title="Upload to Cloud">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Upload</span>
+                        </button>
+                        <button id="cloudDownloadBtn" class="sync-btn" onclick="loadFromSupabase()" title="Download from Cloud">
+                            <i class="fas fa-cloud-download-alt"></i>
+                            <span>Download</span>
+                        </button>
+                    </div>
+                    
+                    <div class="primary-buttons">
+                        <button id="addCodeBtn" class="add-btn">
+                            <i class="fas fa-plus"></i>
+                            <span>Add Code</span>
+                        </button>
+                        <button id="logoutBtn" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                        </button>
+                    </div>
                 </div>
-                <button id="addCodeBtn" class="add-btn">
-                    <i class="fas fa-plus"></i>
-                    Add Code
-                </button>
-                <button id="logoutBtn" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    Logout
-                </button>
             </div>
         </header>
 
