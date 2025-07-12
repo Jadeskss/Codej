@@ -7,6 +7,11 @@ class SupabaseSync {
         this.supabaseKey = supabaseKey;
         this.isConnected = false;
         this.tableName = 'programs';
+        this.realtimeChannel = null;
+        this.autoSyncEnabled = true;
+        this.heartbeatInterval = null;
+        this.pollingInterval = null;
+        this.lastSyncTime = Date.now();
     }
 
     // Initialize connection and create table if needed
@@ -15,6 +20,10 @@ class SupabaseSync {
             // Test connection
             const response = await this.makeRequest('GET', '/rest/v1/programs?limit=1');
             this.isConnected = true;
+            
+            // Setup real-time sync
+            await this.setupRealtimeSync();
+            
             return true;
         } catch (error) {
             console.error('Supabase connection failed:', error);
@@ -23,6 +32,7 @@ class SupabaseSync {
             if (error.message.includes('relation') && error.message.includes('does not exist')) {
                 await this.createTable();
                 this.isConnected = true;
+                await this.setupRealtimeSync();
                 return true;
             }
             
@@ -236,10 +246,289 @@ After running this SQL, try connecting again!`);
             throw error;
         }
     }
+
+    // Setup real-time synchronization
+    async setupRealtimeSync() {
+        if (!this.isConnected) return;
+
+        console.log('🔄 Setting up real-time sync...');
+        
+        // Method 1: Try WebSocket real-time (preferred)
+        try {
+            await this.setupWebSocketSync();
+        } catch (error) {
+            console.warn('WebSocket real-time failed, using polling fallback:', error);
+            this.setupPollingSync();
+        }
+    }
+
+    // WebSocket-based real-time sync
+    async setupWebSocketSync() {
+        const wsUrl = this.supabaseUrl.replace('https://', 'wss://').replace('http://', 'ws://') + '/realtime/v1/websocket';
+        
+        this.realtimeChannel = new WebSocket(wsUrl + `?apikey=${this.supabaseKey}&vsn=1.0.0`);
+        
+        this.realtimeChannel.onopen = () => {
+            console.log('🌐 WebSocket real-time sync connected');
+            
+            // Join the programs table channel
+            const joinMessage = {
+                topic: `realtime:public:programs`,
+                event: 'phx_join',
+                payload: {},
+                ref: Date.now().toString()
+            };
+            
+            this.realtimeChannel.send(JSON.stringify(joinMessage));
+            
+            // Send heartbeat every 30 seconds
+            this.heartbeatInterval = setInterval(() => {
+                if (this.realtimeChannel.readyState === WebSocket.OPEN) {
+                    const heartbeat = {
+                        topic: 'phoenix',
+                        event: 'heartbeat',
+                        payload: {},
+                        ref: Date.now().toString()
+                    };
+                    this.realtimeChannel.send(JSON.stringify(heartbeat));
+                }
+            }, 30000);
+        };
+        
+        this.realtimeChannel.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                this.handleRealtimeEvent(data);
+            } catch (error) {
+                console.error('Failed to parse real-time message:', error);
+            }
+        };
+        
+        this.realtimeChannel.onerror = (error) => {
+            console.error('WebSocket real-time sync error:', error);
+            // Fallback to polling
+            this.setupPollingSync();
+        };
+        
+        this.realtimeChannel.onclose = () => {
+            console.log('🔌 WebSocket real-time sync disconnected');
+            if (this.heartbeatInterval) {
+                clearInterval(this.heartbeatInterval);
+            }
+            
+            // Try to reconnect after 5 seconds
+            setTimeout(() => {
+                if (this.isConnected) {
+                    console.log('🔄 Attempting to reconnect real-time sync...');
+                    this.setupRealtimeSync();
+                }
+            }, 5000);
+        };
+    }
+
+    // Polling-based real-time sync (fallback)
+    setupPollingSync() {
+        console.log('📡 Using polling-based real-time sync (every 10 seconds)');
+        
+        this.lastSyncTime = Date.now();
+        
+        this.pollingInterval = setInterval(async () => {
+            try {
+                // Get programs updated after last sync
+                const response = await this.makeRequest('GET', `/rest/v1/programs?updated_at=gt.${new Date(this.lastSyncTime).toISOString()}&order=updated_at.asc`);
+                
+                if (response && response.length > 0) {
+                    console.log(`📥 Polling sync: ${response.length} programs updated`);
+                    this.syncFromCloud();
+                }
+                
+                this.lastSyncTime = Date.now();
+            } catch (error) {
+                console.error('Polling sync failed:', error);
+            }
+        }, 10000); // Poll every 10 seconds
+    }
+
+    // Handle real-time events from Supabase
+    handleRealtimeEvent(data) {
+        if (data.event === 'postgres_changes') {
+            const change = data.payload;
+            console.log('📡 Real-time database change:', change.eventType);
+            
+            // Refresh programs from cloud when changes detected
+            this.syncFromCloud();
+        } else if (data.event === 'INSERT' || data.event === 'UPDATE' || data.event === 'DELETE') {
+            console.log('📡 Real-time update received:', data.event);
+            
+            // Refresh programs from cloud when changes detected
+            this.syncFromCloud();
+        }
+    }
+
+    // Sync programs from cloud (called by real-time events)
+    async syncFromCloud() {
+        if (!this.autoSyncEnabled) return;
+        
+        try {
+            const cloudPrograms = await this.loadPrograms();
+            
+            // Update local programs array (if it exists in global scope)
+            if (typeof programs !== 'undefined' && typeof savePrograms === 'function' && typeof renderPrograms === 'function') {
+                const beforeCount = programs.length;
+                const beforeIds = new Set(programs.map(p => p.id));
+                
+                // Check for changes before updating
+                const afterIds = new Set(cloudPrograms.map(p => p.id));
+                const newPrograms = cloudPrograms.filter(p => !beforeIds.has(p.id));
+                const removedPrograms = programs.filter(p => !afterIds.has(p.id));
+                
+                // Update local array
+                programs.length = 0; // Clear array
+                programs.push(...cloudPrograms); // Add cloud programs
+                savePrograms(); // Save to localStorage as backup
+                renderPrograms(); // Re-render the UI
+                
+                // Show notification about meaningful changes
+                if (newPrograms.length > 0 && typeof showSuccess === 'function') {
+                    showSuccess(`📥 ${newPrograms.length} new program(s) synced from another device`);
+                } else if (removedPrograms.length > 0 && typeof showSuccess === 'function') {
+                    showSuccess(`📥 ${removedPrograms.length} program(s) removed on another device`);
+                } else if (cloudPrograms.length !== beforeCount && typeof showSuccess === 'function') {
+                    showSuccess(`📥 Programs updated from another device`);
+                }
+                
+                // Show subtle notification
+                this.showSyncNotification('🔄 Synced from cloud');
+                console.log(`📥 Real-time sync: Updated to ${cloudPrograms.length} programs`);
+            } else {
+                console.warn('Main app variables not available for real-time sync');
+            }
+            
+        } catch (error) {
+            console.error('Auto-sync from cloud failed:', error);
+        }
+    }
+
+    // Auto-save program to cloud
+    async autoSaveProgram(programData) {
+        if (!this.isConnected || !this.autoSyncEnabled) return false;
+        
+        try {
+            await this.saveProgram(programData);
+            this.showSyncNotification('☁️ Synced to cloud');
+            return true;
+        } catch (error) {
+            console.error('Auto-save failed:', error);
+            return false;
+        }
+    }
+
+    // Auto-update program in cloud
+    async autoUpdateProgram(id, programData) {
+        if (!this.isConnected || !this.autoSyncEnabled) return false;
+        
+        try {
+            await this.updateProgram(id, programData);
+            this.showSyncNotification('☁️ Updated in cloud');
+            return true;
+        } catch (error) {
+            console.error('Auto-update failed:', error);
+            return false;
+        }
+    }
+
+    // Auto-delete program from cloud
+    async autoDeleteProgram(id) {
+        if (!this.isConnected || !this.autoSyncEnabled) return false;
+        
+        try {
+            await this.deleteProgram(id);
+            this.showSyncNotification('🗑️ Deleted from cloud');
+            return true;
+        } catch (error) {
+            console.error('Auto-delete failed:', error);
+            return false;
+        }
+    }
+
+    // Show subtle sync notification
+    showSyncNotification(message) {
+        // Create or update sync indicator
+        let indicator = document.getElementById('sync-indicator');
+        
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'sync-indicator';
+            indicator.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 0.5rem 1rem;
+                border-radius: 20px;
+                font-size: 0.8rem;
+                z-index: 9999;
+                transition: all 0.3s ease;
+                opacity: 0;
+                transform: translateX(100%);
+            `;
+            document.body.appendChild(indicator);
+        }
+        
+        indicator.textContent = message;
+        indicator.style.opacity = '1';
+        indicator.style.transform = 'translateX(0)';
+        
+        // Hide after 2 seconds
+        setTimeout(() => {
+            indicator.style.opacity = '0';
+            indicator.style.transform = 'translateX(100%)';
+        }, 2000);
+    }
+
+    // Disconnect real-time sync
+    disconnect() {
+        if (this.realtimeChannel) {
+            this.realtimeChannel.close();
+            this.realtimeChannel = null;
+        }
+        this.isConnected = false;
+    }
+
+    // Cleanup connections
+    cleanup() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+        
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+        
+        if (this.realtimeChannel) {
+            this.realtimeChannel.close();
+            this.realtimeChannel = null;
+        }
+        
+        this.isConnected = false;
+        
+        // Update sync status in UI
+        if (typeof showSyncStatus === 'function') {
+            showSyncStatus(false);
+        }
+    }
+
+    // Enable/disable auto sync
+    setAutoSync(enabled) {
+        this.autoSyncEnabled = enabled;
+        console.log('Auto-sync', enabled ? 'enabled' : 'disabled');
+    }
 }
 
-// Global Supabase instance
-let supabaseSync = null;
+// Global Supabase instance (declared in main script.js)
 
 // Configuration dialog
 function showSupabaseConfig() {
@@ -336,19 +625,31 @@ async function connectSupabase() {
             localStorage.setItem('supabase_key', key);
             
             closeSupabaseConfig();
-            showSuccess('Connected to Supabase successfully!');
+            showSuccess('Connected to Supabase successfully! Real-time sync is now active.');
+            
+            // Update sync status
+            if (typeof showSyncStatus === 'function') {
+                showSyncStatus(true);
+            }
             
             // Ask if user wants to sync existing data
-            if (programs.length > 0) {
+            if (typeof programs !== 'undefined' && programs.length > 0) {
                 if (confirm(`Upload your ${programs.length} existing programs to cloud?`)) {
                     await syncToSupabase();
                 }
             }
         } else {
             showError('Failed to connect to Supabase');
+            if (typeof showSyncStatus === 'function') {
+                showSyncStatus(false);
+            }
         }
     } catch (error) {
         console.error('Connection error:', error);
+        
+        if (typeof showSyncStatus === 'function') {
+            showSyncStatus(false);
+        }
         
         // Show user-friendly error message with table creation instructions
         if (error.message.includes('Table') || error.message.includes('programs')) {
@@ -517,27 +818,8 @@ CREATE POLICY "Enable all operations" ON programs FOR ALL USING (true);`;
     });
 }
 
-// Auto-initialize Supabase if credentials exist
-document.addEventListener('DOMContentLoaded', async function() {
-    const url = localStorage.getItem('supabase_url');
-    const key = localStorage.getItem('supabase_key');
-    
-    if (url && key) {
-        try {
-            supabaseSync = new SupabaseSync(url, key);
-            await supabaseSync.init();
-            
-            if (supabaseSync.isConnected) {
-                console.log('Auto-connected to Supabase');
-                
-                // Optionally auto-sync on startup
-                // await loadFromSupabase();
-            }
-        } catch (error) {
-            console.log('Auto-connection to Supabase failed:', error);
-        }
-    }
-});
+// Note: Auto-initialization is handled by the main script.js
+// This prevents duplicate initialization conflicts
 
 // Add to global scope
 window.showSupabaseConfig = showSupabaseConfig;

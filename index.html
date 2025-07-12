@@ -60,6 +60,10 @@
             </div>
             
             <div class="header-right">
+                <div class="sync-status" id="syncStatus" style="display: none;">
+                    <i class="fas fa-wifi"></i>
+                    <span>Real-time sync active</span>
+                </div>
                 <div class="sync-buttons">
                     <button id="importBtn" class="sync-btn" onclick="importData()" title="Import Data">
                         <i class="fas fa-file-import"></i>
@@ -247,7 +251,7 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
     <script src="supabase-sync.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

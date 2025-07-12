@@ -1,8 +1,13 @@
+// Check script loading
+console.log('🔄 Loading Codej main script...');
+console.log('SupabaseSync available:', typeof SupabaseSync !== 'undefined');
+
 // Application State
 let programs = [];
 let currentEditId = null;
 let currentViewId = null;
 let currentFilter = 'all';
+let supabaseSync = null; // Global Supabase sync instance
 
 // DOM Elements
 const loginPage = document.getElementById('loginPage');
@@ -16,8 +21,13 @@ const viewModal = document.getElementById('viewModal');
 const codeForm = document.getElementById('codeForm');
 const programsGrid = document.getElementById('programsGrid');
 const emptyState = document.getElementById('emptyState');
-const searchInput = document.getElementById('searchInput');
-const filterBtns = document.querySelectorAll('.filter-btn');
+
+// Initialize these after DOM is ready
+let searchInput = null;
+let filterBtns = null;
+
+// App initialization flag
+let appInitialized = false;
 
 // Default password - you can change this
 const APP_PASSWORD = 'jade123';
@@ -28,10 +38,136 @@ const AUTH_KEY = 'codej_authenticated';
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', function() {
-    checkAuthentication();
-    loadPrograms();
-    setupEventListeners();
+    console.log('🚀 DOM Content Loaded - Initializing Codej...');
+    
+    try {
+        checkAuthentication();
+        loadPrograms();
+        setupEventListeners();
+        
+        appInitialized = true;
+        console.log('✅ Core app initialized successfully');
+        
+        // Delay Supabase initialization to ensure all scripts are loaded
+        setTimeout(() => {
+            initializeSupabaseSync();
+        }, 100);
+    } catch (error) {
+        console.error('❌ Error during app initialization:', error);
+        showError('App initialization failed. Please refresh the page.');
+    }
 });
+
+// Alternative initialization if DOMContentLoaded has already fired
+if (document.readyState === 'loading') {
+    // Document is still loading, wait for DOMContentLoaded
+} else {
+    // Document has already loaded, run initialization
+    setTimeout(() => {
+        if (typeof checkAuthentication === 'function') {
+            checkAuthentication();
+            loadPrograms();
+            setupEventListeners();
+            initializeSupabaseSync();
+        }
+    }, 100);
+}
+
+// Fallback initialization for different loading scenarios
+window.addEventListener('load', function() {
+    console.log('🔄 Window load event triggered');
+    
+    // Double-check initialization after window load
+    setTimeout(() => {
+        if (!appInitialized) {
+            console.log('⚠️ App not initialized yet, trying fallback...');
+            try {
+                if (document.getElementById('loginPage') && document.getElementById('mainApp')) {
+                    checkAuthentication();
+                    loadPrograms();
+                    setupEventListeners();
+                    appInitialized = true;
+                    console.log('✅ Fallback initialization successful');
+                }
+            } catch (error) {
+                console.error('❌ Fallback initialization failed:', error);
+            }
+        }
+    }, 500);
+});
+
+// Initialize Supabase sync if credentials exist
+async function initializeSupabaseSync() {
+    console.log('🔄 Initializing Supabase sync...');
+    
+    // Check if SupabaseSync is available
+    if (typeof SupabaseSync === 'undefined') {
+        console.error('❌ SupabaseSync class not found. Script loading issue detected.');
+        showError('Cloud sync not available. Please refresh the page and try again.');
+        return;
+    }
+    
+    console.log('✅ SupabaseSync class loaded successfully');
+    
+    const url = localStorage.getItem('supabase_url');
+    const key = localStorage.getItem('supabase_key');
+    
+    if (url && key) {
+        try {
+            console.log('🔑 Found stored credentials, attempting auto-connection...');
+            supabaseSync = new SupabaseSync(url, key);
+            const connected = await supabaseSync.init();
+            
+            if (connected) {
+                console.log('🌟 Auto-connected to Supabase - Real-time sync enabled!');
+                showSuccess('Cloud sync enabled! Changes will sync across devices automatically.');
+                showSyncStatus(true);
+                
+                // Load latest programs from cloud
+                try {
+                    const cloudPrograms = await supabaseSync.loadPrograms();
+                    if (cloudPrograms.length > 0) {
+                        programs = cloudPrograms;
+                        savePrograms(); // Save to localStorage as backup
+                        renderPrograms();
+                        console.log(`📥 Loaded ${cloudPrograms.length} programs from cloud`);
+                    }
+                } catch (error) {
+                    console.log('📭 No programs found in cloud database, starting fresh');
+                }
+            }
+        } catch (error) {
+            console.log('⚠️ Cloud sync not available:', error.message);
+            showSyncStatus(false);
+        }
+    } else {
+        console.log('🔧 No Supabase credentials found. Cloud sync available but not configured.');
+    }
+}
+
+// Show/hide sync status indicator
+function showSyncStatus(connected) {
+    const syncStatus = document.getElementById('syncStatus');
+    if (syncStatus) {
+        if (connected) {
+            syncStatus.style.display = 'flex';
+            syncStatus.className = 'sync-status';
+            syncStatus.innerHTML = '<i class="fas fa-wifi"></i><span>Real-time sync active</span>';
+        } else {
+            syncStatus.style.display = 'flex';
+            syncStatus.className = 'sync-status disconnected';
+            syncStatus.innerHTML = '<i class="fas fa-wifi"></i><span>Offline mode</span>';
+        }
+    }
+}
+
+// Hide sync status
+function hideSyncStatus() {
+    const syncStatus = document.getElementById('syncStatus');
+    if (syncStatus) {
+        syncStatus.style.display = 'none';
+    }
+}
 
 // Authentication Functions
 function checkAuthentication() {
@@ -65,28 +201,51 @@ function authenticateUser(password) {
 }
 
 function logout() {
+    // Cleanup Supabase connection before logout
+    if (supabaseSync && supabaseSync.cleanup) {
+        supabaseSync.cleanup();
+        console.log('🔌 Disconnected from cloud sync');
+    }
+    
     localStorage.removeItem(AUTH_KEY);
     showLoginPage();
     passwordInput.value = '';
+    hideSyncStatus();
 }
 
 // Event Listeners Setup
 function setupEventListeners() {
+    // Initialize DOM elements that might not exist yet
+    searchInput = document.getElementById('searchInput');
+    filterBtns = document.querySelectorAll('.filter-btn');
+    
     // Login Form
-    loginForm.addEventListener('submit', handleLogin);
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
     
     // Header Actions
-    addCodeBtn.addEventListener('click', () => openAddModal());
-    logoutBtn.addEventListener('click', logout);
+    if (addCodeBtn) {
+        addCodeBtn.addEventListener('click', () => openAddModal());
+    }
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
     
     // Code Form
-    codeForm.addEventListener('submit', handleCodeSubmit);
+    if (codeForm) {
+        codeForm.addEventListener('submit', handleCodeSubmit);
+    }
     
     // Search and Filter
-    searchInput.addEventListener('input', handleSearch);
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', () => handleFilter(btn.dataset.filter));
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', handleSearch);
+    }
+    if (filterBtns) {
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => handleFilter(btn.dataset.filter));
+        });
+    }
     
     // Modal Close Events
     window.addEventListener('click', (e) => {
@@ -102,7 +261,9 @@ function setupEventListeners() {
         }
         if (e.ctrlKey && e.key === 'k') {
             e.preventDefault();
-            searchInput.focus();
+            if (searchInput) {
+                searchInput.focus();
+            }
         }
     });
 }
@@ -110,6 +271,14 @@ function setupEventListeners() {
 // Login Handler
 function handleLogin(e) {
     e.preventDefault();
+    console.log('🔐 Login attempt...');
+    
+    if (!passwordInput) {
+        console.error('❌ Password input element not found');
+        showError('Login form error. Please refresh the page.');
+        return;
+    }
+    
     const password = passwordInput.value.trim();
     
     if (!password) {
@@ -117,10 +286,14 @@ function handleLogin(e) {
         return;
     }
     
+    console.log('🔑 Password entered, checking...');
+    
     if (authenticateUser(password)) {
+        console.log('✅ Login successful');
         showSuccess('Login successful!');
     } else {
-        showError('Incorrect password');
+        console.log('❌ Login failed - incorrect password');
+        showError('Incorrect password. Try: jade123');
         passwordInput.value = '';
         passwordInput.focus();
     }
@@ -152,19 +325,37 @@ function addProgram(programData) {
     savePrograms();
     renderPrograms();
     showSuccess('Code program added successfully!');
+    
+    // Auto-sync to cloud if connected
+    if (supabaseSync && supabaseSync.isConnected) {
+        supabaseSync.autoSaveProgram(program).catch(error => {
+            console.error('Cloud sync failed:', error);
+            showError('Added locally, but cloud sync failed. Will retry automatically.');
+        });
+    }
 }
 
 function updateProgram(id, programData) {
     const index = programs.findIndex(p => p.id === id);
     if (index !== -1) {
-        programs[index] = {
+        const updatedProgram = {
             ...programs[index],
             ...programData,
             updatedAt: new Date().toISOString()
         };
+        
+        programs[index] = updatedProgram;
         savePrograms();
         renderPrograms();
         showSuccess('Code program updated successfully!');
+        
+        // Auto-sync to cloud if connected
+        if (supabaseSync && supabaseSync.isConnected) {
+            supabaseSync.autoUpdateProgram(id, updatedProgram).catch(error => {
+                console.error('Cloud sync failed:', error);
+                showError('Updated locally, but cloud sync failed. Will retry automatically.');
+            });
+        }
     }
 }
 
@@ -175,6 +366,14 @@ function deleteProgram(id) {
         renderPrograms();
         closeViewModal();
         showSuccess('Code program deleted successfully!');
+        
+        // Auto-sync to cloud if connected
+        if (supabaseSync && supabaseSync.isConnected) {
+            supabaseSync.autoDeleteProgram(id).catch(error => {
+                console.error('Cloud sync failed:', error);
+                showError('Deleted locally, but cloud sync failed. Will retry automatically.');
+            });
+        }
     }
 }
 
@@ -342,7 +541,7 @@ function handleFilter(filter) {
 }
 
 function filterPrograms(programs) {
-    const searchTerm = searchInput.value.toLowerCase().trim();
+    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
     
     let filtered = programs;
     
@@ -485,11 +684,87 @@ function importData() {
 }
 
 function syncToCloud() {
-    if (typeof syncToSupabase !== 'undefined') {
-        syncToSupabase();
-    } else {
-        showSupabaseConfig();
+    console.log('🌩️ Sync to cloud requested...');
+    console.log('SupabaseSync available:', typeof SupabaseSync !== 'undefined');
+    console.log('supabaseSync instance:', !!supabaseSync);
+    console.log('supabaseSync connected:', supabaseSync ? supabaseSync.isConnected : 'N/A');
+    
+    // Check if SupabaseSync class is available
+    if (typeof SupabaseSync === 'undefined') {
+        console.error('❌ SupabaseSync class not found');
+        showError('⚠️ Cloud sync module not loaded. Please refresh the page and try again.');
+        return;
     }
+    
+    if (supabaseSync && supabaseSync.isConnected) {
+        console.log('✅ Syncing to cloud...');
+        // Sync all local programs to cloud
+        supabaseSync.syncToCloud(programs).then(() => {
+            showSuccess('All programs synced to cloud successfully!');
+        }).catch(error => {
+            console.error('Sync failed:', error);
+            showError('Sync failed: ' + error.message);
+        });
+    } else {
+        console.log('🔧 No active connection, showing config...');
+        // Show configuration dialog
+        if (typeof showSupabaseConfig === 'function') {
+            showSupabaseConfig();
+        } else {
+            console.error('❌ showSupabaseConfig function not found');
+            showError('⚠️ Cloud sync configuration not available. Please refresh the page and try again.');
+        }
+    }
+}
+
+// Wrapper function for cloud download
+function downloadFromCloud() {
+    if (!testSyncAvailability()) {
+        return;
+    }
+    
+    if (typeof loadFromSupabase === 'function') {
+        loadFromSupabase();
+    } else {
+        showError('Cloud download function not available. Please refresh the page.');
+    }
+}
+
+// Debug function to check if all required functions are available
+function checkScriptLoading() {
+    const requiredFunctions = [
+        'SupabaseSync',
+        'showSupabaseConfig',
+        'connectSupabase',
+        'syncToSupabase',
+        'loadFromSupabase'
+    ];
+    
+    const missing = requiredFunctions.filter(func => typeof window[func] === 'undefined');
+    
+    if (missing.length > 0) {
+        console.error('Missing functions:', missing);
+        console.error('Supabase sync may not be working properly. Please refresh the page.');
+        return false;
+    }
+    
+    console.log('✅ All Supabase sync functions loaded successfully');
+    return true;
+}
+
+// Test sync availability
+function testSyncAvailability() {
+    if (typeof SupabaseSync === 'undefined') {
+        showError('⚠️ Supabase sync not available. Please refresh the page and try again.');
+        return false;
+    }
+    
+    if (typeof showSupabaseConfig !== 'function') {
+        showError('⚠️ Supabase configuration not available. Please refresh the page.');
+        return false;
+    }
+    
+    return true;
 }
 
 // Utility Functions
@@ -620,3 +895,5 @@ window.copyCode = copyCode;
 window.exportData = exportData;
 window.importData = importData;
 window.syncToCloud = syncToCloud;
+window.checkScriptLoading = checkScriptLoading;
+window.testSyncAvailability = testSyncAvailability;

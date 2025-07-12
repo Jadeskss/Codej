@@ -98,14 +98,69 @@ Codej/
 ### Managing Programs
 - **👁️ View**: Click any card to see full details
 - **✏️ Edit**: Use edit button or icon
-- **🗑️ Delete**: Click delete icon (with confirmation)
-- **📋 Copy**: Copy code to clipboard instantly
+- **🗑️ Delete**: Remove unwanted programs
+- **📋 Copy**: One-click code copying
+- **🔍 Search**: Type to find programs instantly
+- **🏷️ Filter**: Click language filters or use tags
 
-### Syncing Data
-- **📤 Upload**: Send local programs to cloud
-- **📥 Download**: Get latest from cloud
-- **📁 Export**: Download JSON backup
-- **📂 Import**: Upload JSON backup
+### 🔄 Real-Time Sync (Supabase)
+Once connected to Supabase, Codej provides **automatic real-time synchronization**:
+
+#### Features:
+- **🌐 Instant Updates**: Code added on one device appears instantly on all others
+- **🔄 Auto-Sync**: All CRUD operations automatically sync to cloud
+- **📱 Cross-Device**: Access same data on phone, tablet, laptop
+- **🔌 Reconnection**: Automatically reconnects if connection drops
+- **📡 Status Indicator**: See real-time sync status in header
+- **⚡ Conflict-Free**: Latest changes always win (timestamp-based)
+
+#### How It Works:
+1. **Background Sync**: WebSocket connection for instant updates
+2. **Fallback Mode**: Polling every 10 seconds if WebSocket fails
+3. **Local Backup**: Always saves to localStorage as backup
+4. **Smart Updates**: Only syncs when actual changes occur
+
+#### Sync Status Indicators:
+- **🟢 "Real-time sync active"**: Connected and syncing instantly
+- **🔴 "Offline mode"**: Working locally only (will sync when connected)
+
+#### Testing Real-Time Sync:
+1. Open Codej on Device A and connect to Supabase
+2. Open Codej on Device B with same credentials
+3. Add/edit/delete code on Device A
+4. Watch it appear instantly on Device B! ✨
+
+#### Troubleshooting:
+- **Not syncing?** Check internet connection and Supabase credentials
+- **Slow sync?** May be using polling fallback (still works, just slower)
+- **Lost connection?** App will auto-reconnect and sync pending changes
+- **Conflicts?** Latest timestamp wins; local backup preserved in browser
+
+## 🧪 Testing Real-Time Sync
+
+### Quick Test (Same Device):
+1. **Open Codej** in your browser and login
+2. **Connect to Supabase** (Upload button → Enter credentials)
+3. **Open second tab** with Codej and login
+4. **Add code** in Tab 1, watch it appear in Tab 2 instantly! ✨
+
+### Multi-Device Test:
+1. **Setup**: Connect Codej to Supabase on Device 1
+2. **Share**: Use same Supabase credentials on Device 2  
+3. **Test**: Add/edit code on either device
+4. **Verify**: Changes appear on both devices in real-time
+
+### Expected Behavior:
+- ✅ New programs appear instantly on all devices
+- ✅ Edits sync immediately (title, code, tags, etc.)
+- ✅ Deletions remove from all devices
+- ✅ Sync status shows "Real-time sync active"
+- ✅ Works even if one device goes offline temporarily
+
+### Troubleshooting Sync:
+- **🔧 No sync?** Check Supabase URL and API key
+- **🔧 Slow sync?** Using polling fallback (still works)
+- **🔧 Connection lost?** Will auto-reconnect and sync pending changes
 
 ## ⚙️ Configuration
 
@@ -225,7 +280,45 @@ All data is stored in your browser's localStorage. This means:
 3. Enter the password (`jade123` by default)
 4. Start adding your code programs!
 
-## Contributing
+## Troubleshooting
+
+### "Cloud sync not available" Error
+
+If you see the error "Cloud sync not available. Please check if Supabase sync is properly loaded", try these steps:
+
+1. **Refresh the page** - This usually resolves script loading issues
+2. **Clear browser cache** - Hold Ctrl+Shift+R (or Cmd+Shift+R on Mac)
+3. **Check browser console** - Press F12 and look for any script errors
+4. **Verify file structure** - Make sure all files are in the same folder:
+   - `index.html`
+   - `script.js` 
+   - `supabase-sync.js`
+   - `styles.css`
+
+### Debug Console Commands
+
+Open browser console (F12) and run these commands to diagnose issues:
+
+```javascript
+// Check if all scripts loaded properly
+checkScriptLoading()
+
+// Test sync availability
+testSyncAvailability()
+
+// Check Supabase connection
+console.log('Supabase instance:', supabaseSync)
+```
+
+### Common Issues & Solutions
+
+| Issue | Solution |
+|-------|----------|
+| Scripts not loading | Refresh page, check file paths |
+| "SupabaseSync not defined" | Ensure `supabase-sync.js` loads before `script.js` |
+| Connection fails | Check Supabase URL and API key |
+| Table doesn't exist | Follow SQL table creation instructions |
+| Real-time not working | Check WebSocket connection, fallback to polling |
 
 Feel free to modify and enhance the application according to your needs. The code is well-commented and organized for easy customization.
 
