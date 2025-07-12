@@ -190,6 +190,11 @@ function showMainApp() {
     loginPage.classList.add('hidden');
     mainApp.classList.remove('hidden');
     renderPrograms();
+    
+    // Initialize hamburger menu after main app is shown
+    setTimeout(() => {
+        initializeHamburgerMenu();
+    }, 100);
 }
 
 function authenticateUser(password) {
@@ -773,17 +778,34 @@ function testSyncAvailability() {
 
 // Hamburger Menu Functionality
 function initializeHamburgerMenu() {
+    console.log('🍔 Initializing hamburger menu...');
+    
     const hamburgerMenu = document.getElementById('hamburgerMenu');
     const headerRight = document.getElementById('headerRight');
     const mobileOverlay = document.getElementById('mobileOverlay');
     
+    console.log('Elements found:', {
+        hamburgerMenu: !!hamburgerMenu,
+        headerRight: !!headerRight,
+        mobileOverlay: !!mobileOverlay
+    });
+    
     if (!hamburgerMenu || !headerRight || !mobileOverlay) {
-        console.log('Hamburger menu elements not found, skipping initialization');
+        console.warn('⚠️ Hamburger menu elements not found, retrying in 500ms...');
+        setTimeout(initializeHamburgerMenu, 500);
         return;
     }
     
+    // Remove any existing event listeners
+    hamburgerMenu.removeEventListener('click', toggleMenu);
+    mobileOverlay.removeEventListener('click', closeMenu);
+    
     // Toggle menu
-    function toggleMenu() {
+    function toggleMenu(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('🍔 Hamburger menu clicked');
+        
         const isActive = headerRight.classList.contains('active');
         
         if (isActive) {
@@ -795,6 +817,7 @@ function initializeHamburgerMenu() {
     
     // Open menu
     function openMenu() {
+        console.log('📱 Opening mobile menu');
         hamburgerMenu.classList.add('active');
         headerRight.classList.add('active');
         mobileOverlay.classList.add('active');
@@ -803,6 +826,7 @@ function initializeHamburgerMenu() {
     
     // Close menu
     function closeMenu() {
+        console.log('📱 Closing mobile menu');
         hamburgerMenu.classList.remove('active');
         headerRight.classList.remove('active');
         mobileOverlay.classList.remove('active');
@@ -833,7 +857,15 @@ function initializeHamburgerMenu() {
         }
     });
     
-    console.log('✅ Hamburger menu initialized');
+    console.log('✅ Hamburger menu initialized successfully');
+    
+    // Make functions globally accessible for debugging
+    window.debugHamburger = {
+        openMenu,
+        closeMenu,
+        toggleMenu,
+        elements: { hamburgerMenu, headerRight, mobileOverlay }
+    };
 }
 
 // Utility Functions

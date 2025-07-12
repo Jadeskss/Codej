@@ -1253,6 +1253,7 @@ body {
     padding: 0.5rem;
     gap: 0.25rem;
     z-index: 101;
+    position: relative;
 }
 
 .hamburger-menu span {
@@ -1262,6 +1263,7 @@ body {
     border-radius: 2px;
     transition: all 0.3s ease;
     transform-origin: center;
+    display: block;
 }
 
 .hamburger-menu.active span:nth-child(1) {
