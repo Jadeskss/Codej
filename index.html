@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codej - Code ni Jade</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="logo">
+                    <i class="fas fa-code"></i>
+                    <h1>Codej</h1>
+                </div>
+                <p class="tagline">Code ni Jade</p>
+            </div>
+            
+            <form id="loginForm" class="login-form">
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="login-btn">
+                    <span>Sign In</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+            
+            <div class="login-footer">
+                <p>Secure access to your code repository</p>
+            </div>
+        </div>
+        
+        <div class="bg-animation">
+            <div class="code-bg">
+                <div class="code-line"></div>
+                <div class="code-line"></div>
+                <div class="code-line"></div>
+                <div class="code-line"></div>
+                <div class="code-line"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" class="main-app hidden">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo">
+                    <i class="fas fa-code"></i>
+                    <h1>Codej</h1>
+                </div>
+                <p class="tagline">Code ni Jade</p>
+            </div>
+            
+            <div class="header-right">
+                <div class="sync-buttons">
+                    <button id="importBtn" class="sync-btn" onclick="importData()" title="Import Data">
+                        <i class="fas fa-file-import"></i>
+                        Import
+                    </button>
+                    <button id="exportBtn" class="sync-btn" onclick="exportData()" title="Export Data">
+                        <i class="fas fa-file-export"></i>
+                        Export
+                    </button>
+                    <button id="cloudUploadBtn" class="sync-btn" onclick="syncToCloud()" title="Upload to Cloud">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        Upload
+                    </button>
+                    <button id="cloudDownloadBtn" class="sync-btn" onclick="loadFromSupabase()" title="Download from Cloud">
+                        <i class="fas fa-cloud-download-alt"></i>
+                        Download
+                    </button>
+                </div>
+                <button id="addCodeBtn" class="add-btn">
+                    <i class="fas fa-plus"></i>
+                    Add Code
+                </button>
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Search Bar -->
+            <div class="search-section">
+                <div class="search-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Search your code programs...">
+                </div>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="javascript">JavaScript</button>
+                    <button class="filter-btn" data-filter="python">Python</button>
+                    <button class="filter-btn" data-filter="html">HTML/CSS</button>
+                    <button class="filter-btn" data-filter="other">Other</button>
+                </div>
+            </div>
+
+            <!-- Code Programs Grid -->
+            <div class="programs-grid" id="programsGrid">
+                <!-- Programs will be dynamically added here -->
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+                <i class="fas fa-code-branch"></i>
+                <h3>No code programs yet</h3>
+                <p>Start by adding your first code program</p>
+                <button class="add-first-btn" onclick="openAddModal()">
+                    <i class="fas fa-plus"></i>
+                    Add Your First Code
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="codeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Code Program</h2>
+                <button class="close-btn" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="codeForm" class="code-form">
+                <div class="form-group">
+                    <label for="programTitle">Program Title</label>
+                    <input type="text" id="programTitle" required placeholder="Enter program title">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="programLanguage">Language</label>
+                        <select id="programLanguage" required>
+                            <option value="">Select Language</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python</option>
+                            <option value="html">HTML/CSS</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="csharp">C#</option>
+                            <option value="php">PHP</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="programTags">Tags (comma separated)</label>
+                        <input type="text" id="programTags" placeholder="web, frontend, api">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="programDescription">Description</label>
+                    <textarea id="programDescription" placeholder="Brief description of what this program does"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="programCode">Code</label>
+                    <textarea id="programCode" required placeholder="Paste your code here..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="programUrl">URL/Link (optional)</label>
+                    <input type="url" id="programUrl" placeholder="https://github.com/...">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="save-btn">
+                        <i class="fas fa-save"></i>
+                        Save Program
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Code Modal -->
+    <div id="viewModal" class="modal">
+        <div class="modal-content view-modal">
+            <div class="modal-header">
+                <h2 id="viewTitle"></h2>
+                <div class="modal-actions">
+                    <button class="action-btn" onclick="editProgram(currentViewId)">
+                        <i class="fas fa-edit"></i>
+                        Edit
+                    </button>
+                    <button class="action-btn delete" onclick="deleteProgram(currentViewId)">
+                        <i class="fas fa-trash"></i>
+                        Delete
+                    </button>
+                    <button class="close-btn" onclick="closeViewModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="view-content">
+                <div class="program-info">
+                    <div class="info-item">
+                        <i class="fas fa-code"></i>
+                        <span id="viewLanguage"></span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span id="viewDate"></span>
+                    </div>
+                    <div class="info-item tags" id="viewTagsContainer">
+                        <i class="fas fa-tags"></i>
+                        <div id="viewTags"></div>
+                    </div>
+                </div>
+                
+                <div class="program-description" id="viewDescription"></div>
+                
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>Code</span>
+                        <button class="copy-btn" onclick="copyCode()">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <pre id="viewCode"></pre>
+                </div>
+                
+                <div class="program-url" id="viewUrlContainer">
+                    <a id="viewUrl" target="_blank">
+                        <i class="fas fa-external-link-alt"></i>
+                        View Project
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="supabase-sync.js"></script>
+</body>
+</html>

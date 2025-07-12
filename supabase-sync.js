@@ -1,0 +1,550 @@
+// Supabase Cloud Sync for Codej
+// Easy cloud database with real-time sync across devices
+
+class SupabaseSync {
+    constructor(supabaseUrl, supabaseKey) {
+        this.supabaseUrl = supabaseUrl;
+        this.supabaseKey = supabaseKey;
+        this.isConnected = false;
+        this.tableName = 'programs';
+    }
+
+    // Initialize connection and create table if needed
+    async init() {
+        try {
+            // Test connection
+            const response = await this.makeRequest('GET', '/rest/v1/programs?limit=1');
+            this.isConnected = true;
+            return true;
+        } catch (error) {
+            console.error('Supabase connection failed:', error);
+            
+            // If table doesn't exist, create it
+            if (error.message.includes('relation') && error.message.includes('does not exist')) {
+                await this.createTable();
+                this.isConnected = true;
+                return true;
+            }
+            
+            this.isConnected = false;
+            return false;
+        }
+    }
+
+    // Create the programs table using Supabase SQL Editor approach
+    async createTable() {
+        // Since we can't execute SQL directly via API, we'll guide the user to create it manually
+        const tableSetupGuide = `
+        Please create the table manually in your Supabase dashboard:
+        
+        1. Go to your Supabase dashboard
+        2. Click "SQL Editor" in the left sidebar
+        3. Click "New Query"
+        4. Paste this SQL and click "Run":
+        
+        CREATE TABLE IF NOT EXISTS programs (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            language TEXT NOT NULL,
+            description TEXT,
+            code TEXT NOT NULL,
+            url TEXT,
+            tags JSONB DEFAULT '[]',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        
+        ALTER TABLE programs ENABLE ROW LEVEL SECURITY;
+        
+        CREATE POLICY "Enable all operations for everyone" ON programs
+        FOR ALL USING (true) WITH CHECK (true);
+        `;
+        
+        console.log('Table creation guide:', tableSetupGuide);
+        
+        // Show user-friendly message
+        throw new Error(`Table 'programs' doesn't exist. Please create it manually in your Supabase dashboard:
+
+1. Go to your Supabase dashboard
+2. Click "SQL Editor" in the left sidebar  
+3. Click "New Query"
+4. Copy and paste this SQL, then click "Run":
+
+CREATE TABLE programs (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    language TEXT NOT NULL,
+    description TEXT,
+    code TEXT NOT NULL,
+    url TEXT,
+    tags JSONB DEFAULT '[]',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE programs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable all operations" ON programs FOR ALL USING (true);
+
+After running this SQL, try connecting again!`);
+    }
+
+    // Make HTTP request to Supabase
+    async makeRequest(method, endpoint, data = null) {
+        const url = `${this.supabaseUrl}${endpoint}`;
+        const headers = {
+            'apikey': this.supabaseKey,
+            'Authorization': `Bearer ${this.supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        };
+
+        const options = {
+            method,
+            headers
+        };
+
+        if (data && (method === 'POST' || method === 'PATCH')) {
+            options.body = JSON.stringify(data);
+        }
+
+        const response = await fetch(url, options);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Supabase error: ${response.status} - ${errorText}`);
+        }
+
+        const responseText = await response.text();
+        return responseText ? JSON.parse(responseText) : null;
+    }
+
+    // Load all programs from Supabase
+    async loadPrograms() {
+        if (!this.isConnected) {
+            throw new Error('Not connected to Supabase');
+        }
+
+        try {
+            const response = await this.makeRequest('GET', '/rest/v1/programs?order=created_at.desc');
+            return response.map(program => ({
+                id: program.id,
+                title: program.title,
+                language: program.language,
+                description: program.description,
+                code: program.code,
+                url: program.url,
+                tags: program.tags || [],
+                createdAt: program.created_at,
+                updatedAt: program.updated_at
+            }));
+        } catch (error) {
+            console.error('Failed to load programs from Supabase:', error);
+            throw error;
+        }
+    }
+
+    // Save a new program to Supabase
+    async saveProgram(programData) {
+        if (!this.isConnected) {
+            throw new Error('Not connected to Supabase');
+        }
+
+        const supabaseData = {
+            id: programData.id,
+            title: programData.title,
+            language: programData.language,
+            description: programData.description,
+            code: programData.code,
+            url: programData.url,
+            tags: programData.tags || []
+        };
+
+        try {
+            const response = await this.makeRequest('POST', '/rest/v1/programs', supabaseData);
+            return response[0];
+        } catch (error) {
+            console.error('Failed to save program to Supabase:', error);
+            throw error;
+        }
+    }
+
+    // Update an existing program in Supabase
+    async updateProgram(id, programData) {
+        if (!this.isConnected) {
+            throw new Error('Not connected to Supabase');
+        }
+
+        const supabaseData = {
+            title: programData.title,
+            language: programData.language,
+            description: programData.description,
+            code: programData.code,
+            url: programData.url,
+            tags: programData.tags || [],
+            updated_at: new Date().toISOString()
+        };
+
+        try {
+            const response = await this.makeRequest('PATCH', `/rest/v1/programs?id=eq.${id}`, supabaseData);
+            return response[0];
+        } catch (error) {
+            console.error('Failed to update program in Supabase:', error);
+            throw error;
+        }
+    }
+
+    // Delete a program from Supabase
+    async deleteProgram(id) {
+        if (!this.isConnected) {
+            throw new Error('Not connected to Supabase');
+        }
+
+        try {
+            await this.makeRequest('DELETE', `/rest/v1/programs?id=eq.${id}`);
+            return true;
+        } catch (error) {
+            console.error('Failed to delete program from Supabase:', error);
+            throw error;
+        }
+    }
+
+    // Sync all local programs to Supabase
+    async syncToCloud(localPrograms) {
+        if (!this.isConnected) {
+            throw new Error('Not connected to Supabase');
+        }
+
+        try {
+            // Get existing programs from cloud
+            const cloudPrograms = await this.loadPrograms();
+            const cloudIds = new Set(cloudPrograms.map(p => p.id));
+
+            // Upload new/updated programs
+            for (const program of localPrograms) {
+                if (cloudIds.has(program.id)) {
+                    // Update existing
+                    await this.updateProgram(program.id, program);
+                } else {
+                    // Create new
+                    await this.saveProgram(program);
+                }
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Failed to sync to cloud:', error);
+            throw error;
+        }
+    }
+}
+
+// Global Supabase instance
+let supabaseSync = null;
+
+// Configuration dialog
+function showSupabaseConfig() {
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Configure Supabase Cloud Sync</h2>
+                <button class="close-btn" onclick="closeSupabaseConfig()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div style="padding: 1.5rem;">
+                <div class="form-group">
+                    <label for="supabaseUrl">Supabase Project URL</label>
+                    <input type="url" id="supabaseUrl" placeholder="https://your-project.supabase.co" 
+                           value="${localStorage.getItem('supabase_url') || ''}">
+                    <small style="color: #64748b; font-size: 0.8rem;">
+                        Find this in your Supabase project settings
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="supabaseKey">Supabase Anon Key</label>
+                    <input type="password" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                           value="${localStorage.getItem('supabase_key') || ''}">
+                    <small style="color: #64748b; font-size: 0.8rem;">
+                        Your public anon key (safe to use in client-side code)
+                    </small>
+                </div>
+                <div class="form-actions" style="margin-top: 2rem;">
+                    <button type="button" class="cancel-btn" onclick="closeSupabaseConfig()">Cancel</button>
+                    <button type="button" class="save-btn" onclick="connectSupabase()">
+                        <i class="fas fa-cloud"></i>
+                        Connect & Test
+                    </button>
+                </div>
+                <div style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 8px; font-size: 0.9rem;">
+                    <strong>Quick Setup:</strong><br>
+                    1. Go to <a href="https://supabase.com" target="_blank" style="color: #667eea;">supabase.com</a> and create a free account<br>
+                    2. Create a new project<br>
+                    3. Go to Settings → API<br>
+                    4. Copy your Project URL and anon public key<br>
+                    5. Click "Connect & Test" - if table doesn't exist, follow the instructions to create it
+                </div>
+                <details style="margin-top: 1rem;">
+                    <summary style="cursor: pointer; color: #667eea; font-weight: 500;">📋 SQL Table Creation Code (click to expand)</summary>
+                    <div style="margin-top: 0.5rem; padding: 1rem; background: #1e293b; color: #e2e8f0; border-radius: 6px; font-family: monospace; font-size: 0.8rem; overflow-x: auto;">
+CREATE TABLE programs (<br>
+&nbsp;&nbsp;id TEXT PRIMARY KEY,<br>
+&nbsp;&nbsp;title TEXT NOT NULL,<br>
+&nbsp;&nbsp;language TEXT NOT NULL,<br>
+&nbsp;&nbsp;description TEXT,<br>
+&nbsp;&nbsp;code TEXT NOT NULL,<br>
+&nbsp;&nbsp;url TEXT,<br>
+&nbsp;&nbsp;tags JSONB DEFAULT '[]',<br>
+&nbsp;&nbsp;created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),<br>
+&nbsp;&nbsp;updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()<br>
+);<br><br>
+ALTER TABLE programs ENABLE ROW LEVEL SECURITY;<br>
+CREATE POLICY "Enable all operations" ON programs FOR ALL USING (true);
+                    </div>
+                </details>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function closeSupabaseConfig() {
+    const modal = document.querySelector('.modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function connectSupabase() {
+    const url = document.getElementById('supabaseUrl').value.trim();
+    const key = document.getElementById('supabaseKey').value.trim();
+    
+    if (!url || !key) {
+        showError('Please enter both Supabase URL and API key');
+        return;
+    }
+    
+    try {
+        supabaseSync = new SupabaseSync(url, key);
+        const connected = await supabaseSync.init();
+        
+        if (connected) {
+            // Save credentials
+            localStorage.setItem('supabase_url', url);
+            localStorage.setItem('supabase_key', key);
+            
+            closeSupabaseConfig();
+            showSuccess('Connected to Supabase successfully!');
+            
+            // Ask if user wants to sync existing data
+            if (programs.length > 0) {
+                if (confirm(`Upload your ${programs.length} existing programs to cloud?`)) {
+                    await syncToSupabase();
+                }
+            }
+        } else {
+            showError('Failed to connect to Supabase');
+        }
+    } catch (error) {
+        console.error('Connection error:', error);
+        
+        // Show user-friendly error message with table creation instructions
+        if (error.message.includes('Table') || error.message.includes('programs')) {
+            // Show table creation modal
+            showTableCreationModal();
+        } else if (error.message.includes('404') || error.message.includes('relation') || error.message.includes('does not exist')) {
+            showTableCreationModal();
+        } else {
+            showError('Connection failed: ' + error.message);
+        }
+    }
+}
+
+async function syncToSupabase() {
+    if (!supabaseSync || !supabaseSync.isConnected) {
+        showSupabaseConfig();
+        return;
+    }
+    
+    try {
+        await supabaseSync.syncToCloud(programs);
+        showSuccess('Successfully synced to Supabase!');
+    } catch (error) {
+        showError('Sync failed: ' + error.message);
+    }
+}
+
+async function loadFromSupabase() {
+    if (!supabaseSync || !supabaseSync.isConnected) {
+        showSupabaseConfig();
+        return;
+    }
+    
+    try {
+        const cloudPrograms = await supabaseSync.loadPrograms();
+        
+        if (cloudPrograms.length > 0) {
+            if (programs.length > 0) {
+                if (confirm(`Found ${cloudPrograms.length} programs in cloud. Replace your current ${programs.length} programs?`)) {
+                    programs = cloudPrograms;
+                    savePrograms(); // Also save to localStorage as backup
+                    renderPrograms();
+                    showSuccess('Cloud data loaded successfully!');
+                }
+            } else {
+                programs = cloudPrograms;
+                savePrograms();
+                renderPrograms();
+                showSuccess('Cloud data loaded successfully!');
+            }
+        } else {
+            showError('No programs found in cloud');
+        }
+    } catch (error) {
+        showError('Failed to load from cloud: ' + error.message);
+    }
+}
+
+function showTableCreationModal() {
+    closeSupabaseConfig(); // Close the config modal first
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>📋 Create Database Table</h2>
+                <button class="close-btn" onclick="closeTableCreationModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div style="padding: 1.5rem;">
+                <div style="margin-bottom: 1.5rem;">
+                    <p style="color: #64748b; margin-bottom: 1rem;">
+                        The 'programs' table doesn't exist yet. Please create it in your Supabase dashboard:
+                    </p>
+                    
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                        <h4 style="margin-bottom: 0.5rem; color: #1e293b;">Steps:</h4>
+                        <ol style="color: #64748b; padding-left: 1.2rem;">
+                            <li>Go to your <strong>Supabase Dashboard</strong></li>
+                            <li>Click <strong>"SQL Editor"</strong> in the left sidebar</li>
+                            <li>Click <strong>"New Query"</strong></li>
+                            <li>Copy the SQL code below and paste it</li>
+                            <li>Click <strong>"Run"</strong></li>
+                            <li>Come back here and try connecting again</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <h4>SQL Code to Copy:</h4>
+                        <button onclick="copySqlCode()" style="background: #667eea; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                            <i class="fas fa-copy"></i> Copy SQL
+                        </button>
+                    </div>
+                    <div id="sqlCode" style="background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 6px; font-family: monospace; font-size: 0.9rem; line-height: 1.4; overflow-x: auto;">CREATE TABLE programs (<br>
+&nbsp;&nbsp;id TEXT PRIMARY KEY,<br>
+&nbsp;&nbsp;title TEXT NOT NULL,<br>
+&nbsp;&nbsp;language TEXT NOT NULL,<br>
+&nbsp;&nbsp;description TEXT,<br>
+&nbsp;&nbsp;code TEXT NOT NULL,<br>
+&nbsp;&nbsp;url TEXT,<br>
+&nbsp;&nbsp;tags JSONB DEFAULT '[]',<br>
+&nbsp;&nbsp;created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),<br>
+&nbsp;&nbsp;updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()<br>
+);<br><br>
+ALTER TABLE programs ENABLE ROW LEVEL SECURITY;<br>
+CREATE POLICY "Enable all operations" ON programs FOR ALL USING (true);</div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" onclick="closeTableCreationModal()">Cancel</button>
+                    <a href="https://app.supabase.com" target="_blank" class="save-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-external-link-alt"></i>
+                        Open Supabase Dashboard
+                    </a>
+                </div>
+                
+                <div style="margin-top: 1rem; padding: 1rem; background: #ecfdf5; border: 1px solid #d1fae5; border-radius: 8px; font-size: 0.9rem;">
+                    <strong style="color: #065f46;">💡 Tip:</strong>
+                    <span style="color: #047857;">After creating the table, return here and click the "Upload" button again to test the connection!</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function closeTableCreationModal() {
+    const modal = document.querySelector('.modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function copySqlCode() {
+    const sqlText = `CREATE TABLE programs (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    language TEXT NOT NULL,
+    description TEXT,
+    code TEXT NOT NULL,
+    url TEXT,
+    tags JSONB DEFAULT '[]',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE programs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable all operations" ON programs FOR ALL USING (true);`;
+
+    navigator.clipboard.writeText(sqlText).then(() => {
+        showSuccess('SQL code copied to clipboard!');
+    }).catch(() => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = sqlText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showSuccess('SQL code copied to clipboard!');
+    });
+}
+
+// Auto-initialize Supabase if credentials exist
+document.addEventListener('DOMContentLoaded', async function() {
+    const url = localStorage.getItem('supabase_url');
+    const key = localStorage.getItem('supabase_key');
+    
+    if (url && key) {
+        try {
+            supabaseSync = new SupabaseSync(url, key);
+            await supabaseSync.init();
+            
+            if (supabaseSync.isConnected) {
+                console.log('Auto-connected to Supabase');
+                
+                // Optionally auto-sync on startup
+                // await loadFromSupabase();
+            }
+        } catch (error) {
+            console.log('Auto-connection to Supabase failed:', error);
+        }
+    }
+});
+
+// Add to global scope
+window.showSupabaseConfig = showSupabaseConfig;
+window.closeSupabaseConfig = closeSupabaseConfig;
+window.connectSupabase = connectSupabase;
+window.syncToSupabase = syncToSupabase;
+window.loadFromSupabase = loadFromSupabase;
+window.showTableCreationModal = showTableCreationModal;
+window.closeTableCreationModal = closeTableCreationModal;
+window.copySqlCode = copySqlCode;
